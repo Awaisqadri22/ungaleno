@@ -16,7 +16,12 @@ import MenuItem from "@material-ui/core/MenuItem";
 import { withRouter } from "react-router-dom";
 import DateFnsUtils from "@date-io/date-fns";
 
-import { auth, createUserProfileDocument } from "../../firebase/firebase.utils";
+import {
+  auth,
+  createUserProfileDocument,
+  newDocumentForNewDoctor
+} from "../../firebase/firebase.utils";
+import { storage } from "../../firebase/firebase.utils";
 import { DatePicker, MuiPickersUtilsProvider } from "@material-ui/pickers";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -41,17 +46,111 @@ class SignUp extends React.Component {
     super();
 
     this.state = {
-      selectedDate: null,
       asADoctore: false,
-
       displayName: "",
       email: "",
       password: "",
-      confirmPassword: ""
+      confirmPassword: "",
+      emailForDoctor: "",
+      passwordForDoctor: "",
+      displayNameForDoctor: "",
+      direction: "",
+      phone: "",
+      allergies: "",
+      sex: "",
+      selectedDate: "",
+      image: null,
+      url: "",
+      vdocument: ""
     };
   }
+  formAdd = async event => {
+    event.preventDefault();
+
+    const {
+      emailForDoctor,
+      passwordForDoctor,
+      displayNameForDoctor,
+      direction,
+      phone,
+      allergies,
+      sex,
+      selectedDate,
+      url
+    } = this.state;
+
+    if (emailForDoctor === "") {
+      return toast.error("Please Provide Full Email address", {
+        position: toast.POSITION.TOP_RIGHT
+      });
+    }
+
+    if (passwordForDoctor.length < 6) {
+      return toast.error("Password must be 6 characters long", {
+        position: toast.POSITION.TOP_RIGHT
+      });
+    }
+
+    try {
+      const { user } = await auth.createUserWithEmailAndPassword(
+        emailForDoctor,
+        passwordForDoctor
+      );
+
+      await newDocumentForNewDoctor(user, {
+        emailForDoctor,
+        displayNameForDoctor,
+        phone,
+        allergies,
+        direction,
+        sex,
+        selectedDate,
+        url
+      });
+      toast.success(" Doctor Signed Up successfully", {
+        position: toast.POSITION.TOP_RIGHT
+      });
+      this.setState({
+        displayNameForDoctor: "",
+        phone: "",
+        allergies: "",
+        direction: "",
+        sex: "",
+        selectedDate: ""
+      });
+    } catch (error) {
+      console.log("Coming in error before");
+      console.error(error);
+    }
+  };
+
+  uploadPicture = () => {
+    const { image } = this.state;
+    if (!image) return;
+    const uploadTask = storage.ref(`images/${image.name}`).put(image);
+
+    uploadTask.on(
+      "state_changed",
+      snapshot => {},
+      error => {
+        console.log(error);
+      },
+      () => {
+        storage
+          .ref("images")
+          .child(image.name)
+          .getDownloadURL()
+          .then(url => {
+            toast.success("Picture uploaded ", {
+              position: toast.POSITION.TOP_RIGHT
+            });
+            this.setState({ url });
+          });
+      }
+    );
+  };
+
   handleSubmit = async event => {
-    console.log("jkhdfksdfskdjfh");
     event.preventDefault();
 
     const { displayName, email, password, confirmPassword } = this.state;
@@ -91,10 +190,19 @@ class SignUp extends React.Component {
       console.error(error);
     }
   };
+
   handleChange = event => {
     const { name, value } = event.target;
 
     this.setState({ [name]: value });
+  };
+
+  changePicture = e => {
+    if (e.target.files[0]) {
+      const image = e.target.files[0];
+      this.setState(() => ({ image }));
+    }
+    console.log(e.target.files[0]);
   };
 
   handleDateChange = date => {
@@ -122,12 +230,9 @@ class SignUp extends React.Component {
           <Typography component="h1" variant="h5">
             Sign up
           </Typography>
-          <form
-            className={classes.form}
-            noValidate
-            onSubmit={this.handleSubmit}
-          >
-            {this.state.asADoctore ? (
+
+          {this.state.asADoctore ? (
+            <form className={classes.form} noValidate onSubmit={this.formAdd}>
               <Grid
                 style={{
                   marginBottom: 25
@@ -140,10 +245,11 @@ class SignUp extends React.Component {
                     variant="outlined"
                     required
                     fullWidth
-                    id="email"
+                    onChange={this.handleChange}
+                    id="emailForDoctor"
                     label="Email Address"
-                    name="email"
-                    autoComplete="email"
+                    name="emailForDoctor"
+                    autoComplete="emailForDoctor"
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -151,10 +257,23 @@ class SignUp extends React.Component {
                     variant="outlined"
                     required
                     fullWidth
-                    id="password"
+                    onChange={this.handleChange}
+                    id="passwordForDoctor"
                     label="Password"
-                    name="password"
-                    autoComplete="email"
+                    name="passwordForDoctor"
+                    autoComplete="passwordForDoctor"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    variant="outlined"
+                    required
+                    onChange={this.handleChange}
+                    fullWidth
+                    name="displayNameForDoctor"
+                    label="Display Name"
+                    id="displayNameForDoctor"
+                    autoComplete="displayNameForDoctor"
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -162,21 +281,11 @@ class SignUp extends React.Component {
                     variant="outlined"
                     required
                     fullWidth
-                    name="name"
-                    label="Name"
-                    id="name"
-                    autoComplete="current-password"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    variant="outlined"
-                    required
-                    fullWidth
+                    onChange={this.handleChange}
                     name="direction"
                     label="Direction"
                     id="direction"
-                    autoComplete="current-password"
+                    autoComplete="direction"
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -184,10 +293,11 @@ class SignUp extends React.Component {
                     variant="outlined"
                     required
                     fullWidth
+                    onChange={this.handleChange}
                     name="phone"
                     label="Phone"
                     id="phone"
-                    autoComplete="current-password"
+                    autoComplete="phone"
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -197,8 +307,9 @@ class SignUp extends React.Component {
                     fullWidth
                     name="allergies"
                     label="Allergies"
+                    onChange={this.handleChange}
                     id="allergies"
-                    autoComplete="current-password"
+                    autoComplete="allergies"
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -216,12 +327,12 @@ class SignUp extends React.Component {
                       width: "100%"
                     }}
                     labelId="demo-simple-select-label"
-                    id="demo-simple-select"
-                    // value={age}
-                    // onChange={handleChange}
+                    id="sex"
+                    name="sex"
+                    onChange={this.handleChange}
                   >
-                    <MenuItem value={10}>Male</MenuItem>
-                    <MenuItem value={20}>Female</MenuItem>
+                    <MenuItem value={"male"}>Male</MenuItem>
+                    <MenuItem value={"female"}>Female</MenuItem>
                   </Select>
                 </Grid>
                 <Grid item xs={12}>
@@ -239,30 +350,65 @@ class SignUp extends React.Component {
                       style={{
                         width: "100%"
                       }}
-                      value={this.state.selectedDate}
+                      name="selectedDate"
                       onChange={this.handleDateChange}
                     />
                   </MuiPickersUtilsProvider>
                 </Grid>
-                <Grid item xs={12}>
-                  <InputLabel
+                <Grid
+                  style={{
+                    display: "flex",
+                    justifyContent: "row",
+                    alignItems: "center"
+                  }}
+                >
+                  <Grid
                     style={{
-                      display: "flex",
-                      justifyContent: "flex-start"
+                      marginLeft: 10
                     }}
-                    id="demo-simple-select-label"
+                    item
+                    xs={12}
+                    sm={6}
                   >
-                    Profile Picture
-                  </InputLabel>
-                  <TextField
-                    variant="outlined"
-                    type="file"
-                    required
-                    fullWidth
-                    name="picture"
-                    id="picture"
-                    autoComplete="current-password"
-                  />
+                    <InputLabel
+                      style={{
+                        display: "flex",
+                        justifyContent: "flex-start"
+                      }}
+                      id="demo-simple-select-label"
+                    >
+                      Profile Picture
+                    </InputLabel>
+                    <TextField
+                      variant="outlined"
+                      type="file"
+                      name="image"
+                      id="image"
+                      autoComplete="picture"
+                      onChange={this.changePicture}
+                    />
+                  </Grid>
+                  <Grid
+                    style={{
+                      float: "right"
+                    }}
+                    item
+                    xs={12}
+                    sm={6}
+                  >
+                    <Button
+                      style={{
+                        backgroundColor: "green",
+                        color: "white"
+                      }}
+                      onClick={this.uploadPicture}
+                      type="upload"
+                      variant="contained"
+                      className={classes.submit}
+                    >
+                      Upload
+                    </Button>
+                  </Grid>
                 </Grid>
                 <Grid item xs={12}>
                   <InputLabel
@@ -277,15 +423,29 @@ class SignUp extends React.Component {
                   <TextField
                     variant="outlined"
                     type="file"
-                    required
                     fullWidth
-                    name="picture"
-                    id="picture"
-                    autoComplete="current-password"
+                    name="vdocument"
+                    id="vdocument"
+                    autoComplete="vdocument"
                   />
                 </Grid>
               </Grid>
-            ) : (
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                color="primary"
+                className={classes.submit}
+              >
+                Sign Up
+              </Button>
+            </form>
+          ) : (
+            <form
+              className={classes.form}
+              noValidate
+              onSubmit={this.handleSubmit}
+            >
               <Grid
                 style={{
                   marginBottom: 25
@@ -342,32 +502,32 @@ class SignUp extends React.Component {
                   />
                 </Grid>
               </Grid>
-            )}
-            <FormControlLabel
-              control={
-                <Checkbox
-                  onClick={() => {
-                    this.setState({
-                      asADoctore: !this.state.asADoctore
-                    });
-                  }}
-                  value="remember"
-                  color="secondary"
-                />
-              }
-              label="Are you a Doctor?"
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              color="primary"
-              className={classes.submit}
-            >
-              Sign Up
-            </Button>
-            <ToastContainer />
-          </form>
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                color="primary"
+                className={classes.submit}
+              >
+                Sign Up
+              </Button>
+            </form>
+          )}
+          <FormControlLabel
+            control={
+              <Checkbox
+                onClick={() => {
+                  this.setState({
+                    asADoctore: !this.state.asADoctore
+                  });
+                }}
+                value="remember"
+                color="secondary"
+              />
+            }
+            label="Are you a Doctor?"
+          />
+          <ToastContainer />
         </div>
       </Container>
     );

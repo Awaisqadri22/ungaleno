@@ -13,7 +13,9 @@ import Typography from "@material-ui/core/Typography";
 import { withStyles } from "@material-ui/core/styles";
 import { withRouter } from "react-router-dom";
 import Container from "@material-ui/core/Container";
-import SignUp from "../sign-up/sign-up";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { auth, signInWithGoogle } from "../../firebase/firebase.utils";
 
 function Copyright() {
   return (
@@ -48,10 +50,40 @@ class SignIn extends React.Component {
   constructor() {
     super();
     this.state = {
-      asADoctore: false
+      asADoctore: false,
+      account: {
+        email: "",
+        password: ""
+      }
     };
   }
+  userLogin = async event => {
+    event.preventDefault();
 
+    const { email, password } = this.state.account;
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+      toast.success("Logged In successfully", {
+        position: toast.POSITION.TOP_RIGHT,
+        className: "rotateY animated"
+      });
+      this.setState({
+        email: "",
+        password: ""
+      });
+    } catch (error) {
+      toast.error("Wrong Email or Password", {
+        position: toast.POSITION.TOP_RIGHT
+      });
+    }
+
+    this.setState({ email: "", password: "" });
+  };
+  handleChange = event => {
+    const { name, value } = event.target;
+
+    this.setState({ [name]: value });
+  };
   render() {
     const { classes } = this.props;
 
@@ -65,92 +97,146 @@ class SignIn extends React.Component {
           <Typography component="h1" variant="h5">
             Sign in
           </Typography>
-          <form className={classes.form} noValidate>
-            {this.state.asADoctore ? (
-              <TextField
-                variant="outlined"
-                margin="normal"
-                required
-                fullWidth
-                id="cardNo"
-                label="RFC / No. Card"
-                name="cardNo"
-                autoFocus
-              />
-            ) : (
-              <TextField
-                variant="outlined"
-                margin="normal"
-                required
-                fullWidth
-                id="email"
-                label="Email Address"
-                name="email"
-                autoFocus
-              />
-            )}
-            <TextField
-              variant="outlined"
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  onClick={() => {
-                    this.setState({
-                      asADoctore: !this.state.asADoctore
-                    });
-                  }}
-                  value="remember"
-                  color="secondary"
-                />
-              }
-              label="Are you a Doctor?"
-            />
-            <Button
-              style={{
-                marginBottom: 10
-              }}
-              type="submit"
-              fullWidth
-              variant="contained"
-              color="primary"
-              className={classes.submit}
-            >
-              Sign In
-            </Button>
-            <Button
-              style={{
-                marginBottom: 10
-              }}
-              type="submit"
-              fullWidth
-              variant="contained"
-              color="secondary"
-              className={classes.submit}
-            >
-              Sign In With Google
-            </Button>
-            <Grid container>
-              <Grid item>
-                <Link
-                  to="/signup"
-                  onClick={() => {
-                    this.props.history.push("/signup");
-                  }}
-                  variant="body2"
-                >
-                  {"Don't have an account? Sign Up"}
-                </Link>
+          {this.state.asADoctore ? (
+            <form className={classes.form} noValidate>
+              <Grid
+                style={{
+                  marginBottom: 25
+                }}
+                container
+                spacing={2}
+              >
+                <Grid item xs={12}>
+                  <TextField
+                    variant="outlined"
+                    margin="normal"
+                    required
+                    fullWidth
+                    onChange={this.handleChange}
+                    id="cardNo"
+                    label="RFC / No. Card"
+                    name="cardNo"
+                    autoFocus
+                  />
+                  <TextField
+                    variant="outlined"
+                    margin="normal"
+                    required
+                    fullWidth
+                    name="doctorPassword"
+                    onChange={this.handleChange}
+                    label="Password"
+                    type="password"
+                    id="doctorPassword"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Button
+                    style={{
+                      marginBottom: 10
+                    }}
+                    type="submit"
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    className={classes.submit}
+                  >
+                    Sign In
+                  </Button>
+                </Grid>
               </Grid>
+            </form>
+          ) : (
+            <form onSubmit={this.userLogin} className={classes.form} noValidate>
+              <Grid
+                style={{
+                  marginBottom: 25
+                }}
+                container
+                spacing={2}
+              >
+                <Grid item xs={12}>
+                  <TextField
+                    variant="outlined"
+                    margin="normal"
+                    required
+                    fullWidth
+                    id="email"
+                    onChange={this.handleChange}
+                    label="Email"
+                    name="email"
+                    autoFocus
+                  />
+                  <TextField
+                    variant="outlined"
+                    margin="normal"
+                    onChange={this.handleChange}
+                    required
+                    fullWidth
+                    name="password"
+                    label="Password"
+                    type="password"
+                    id="password"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Button
+                    style={{
+                      marginBottom: 10
+                    }}
+                    type="submit"
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    className={classes.submit}
+                  >
+                    Sign In
+                  </Button>
+                </Grid>
+              </Grid>
+            </form>
+          )}
+          <FormControlLabel
+            control={
+              <Checkbox
+                onClick={() => {
+                  this.setState({
+                    asADoctore: !this.state.asADoctore
+                  });
+                }}
+                value="remember"
+                color="secondary"
+              />
+            }
+            label="Are you a Doctor?"
+          />
+          <Button
+            style={{
+              marginBottom: 10
+            }}
+            type="submit"
+            fullWidth
+            variant="contained"
+            onClick={signInWithGoogle}
+            color="secondary"
+            className={classes.submit}
+          >
+            Sign In With Google
+          </Button>
+          <Grid container>
+            <Grid item>
+              <Link
+                to="/signup"
+                onClick={() => {
+                  this.props.history.push("/signup");
+                }}
+                variant="body2"
+              >
+                {"Don't have an account? Sign Up"}
+              </Link>
             </Grid>
-          </form>
+          </Grid>
+          <ToastContainer />
         </div>
         <Box mt={8}>
           <Copyright />

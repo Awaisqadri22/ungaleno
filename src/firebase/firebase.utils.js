@@ -1,5 +1,6 @@
 import firebase from "firebase";
 import "firebase/firestore";
+import "firebase/storage";
 import "firebase/auth";
 
 var firebaseConfig = {
@@ -37,10 +38,50 @@ export const createUserProfileDocument = async (userAuth, addionlaData) => {
   return userRef;
 };
 
+export const newDocumentForNewDoctor = async (docAuth, addionlaData) => {
+  if (!docAuth) return;
+
+  const docRef = firestore.doc(`doctors/${docAuth.uid}`);
+
+  const snapShot = await docRef.get();
+
+  if (!snapShot.exists) {
+    const {
+      emailForDoctor,
+      displayNameForDoctor,
+      phone,
+      allergies,
+      direction,
+      sex,
+      selectedDate,
+      url
+    } = docAuth;
+    const createdAt = new Date();
+
+    try {
+      await docRef.set({
+        emailForDoctor,
+        displayNameForDoctor,
+        phone,
+        allergies,
+        direction,
+        sex,
+        selectedDate,
+        createdAt,
+        url,
+        ...addionlaData
+      });
+    } catch (err) {
+      console.log("Error coming", err);
+    }
+  }
+  return docRef;
+};
 firebase.initializeApp(firebaseConfig);
 
 export const auth = firebase.auth();
 export const firestore = firebase.firestore();
+export const storage = firebase.storage();
 
 const provider = new firebase.auth.GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
